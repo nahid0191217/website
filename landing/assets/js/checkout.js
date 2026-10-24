@@ -605,6 +605,46 @@
 
     setStep("done");
 
+    /* persist the order so the admin panel (admin.html) can manage it */
+    try {
+      const ORDERS_KEY = "airpods-pro2-orders/v1";
+      const orders = JSON.parse(window.localStorage.getItem(ORDERS_KEY) || "[]");
+      const val = (id) => {
+        const node = document.getElementById(id);
+        return node ? node.value.trim() : "";
+      };
+      if (Array.isArray(orders)) {
+        orders.unshift({
+          id: orderNumber,
+          date: new Date().toISOString(),
+          customer: `${firstName} ${val("co-last")}`.trim(),
+          email,
+          phone: val("co-phone"),
+          address: [val("co-address1"), val("co-city"), val("co-region"), val("co-postcode"), val("co-country")]
+            .filter(Boolean)
+            .join(", "),
+          items: items.map((i) => ({
+            name: i.name,
+            qty: i.qty,
+            price: i.price,
+            care: Boolean(i.care),
+            engraving: i.engraving || "",
+          })),
+          subtotal: t.subtotal,
+          discount: t.discount,
+          shipping: t.shipping,
+          total: t.total,
+          promo: state.promo ? state.promo.code : "",
+          payment: paymentLabel(),
+          shippingMethod: state.shipping,
+          status: "Pending",
+        });
+        window.localStorage.setItem(ORDERS_KEY, JSON.stringify(orders.slice(0, 200)));
+      }
+    } catch (err) {
+      /* storage unavailable — the order still completes */
+    }
+
     Cart.clear();
     refreshBadges();
     state.placing = false;

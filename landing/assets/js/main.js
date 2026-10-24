@@ -336,15 +336,15 @@
         const alpha = 0.1 + noise * 0.5;
         ctx.beginPath();
         ctx.arc(x, y, p.r * dpr, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(148, 200, 255, ${alpha.toFixed(3)})`;
+        ctx.fillStyle = `rgba(0, 113, 227, ${alpha.toFixed(3)})`;
         ctx.fill();
       });
 
       /* layered waves */
       const waves = [
-        { amp: 0.34, freq: 0.011, speed: 1.6, color: "rgba(74, 217, 255, 0.85)", width: 2.2 },
-        { amp: 0.22, freq: 0.017, speed: 2.3, color: "rgba(139, 123, 255, 0.6)", width: 1.8 },
-        { amp: 0.13, freq: 0.027, speed: 3.1, color: "rgba(255, 108, 168, 0.45)", width: 1.4 },
+        { amp: 0.34, freq: 0.011, speed: 1.6, color: "rgba(0, 113, 227, 0.9)", width: 2.2 },
+        { amp: 0.22, freq: 0.017, speed: 2.3, color: "rgba(125, 74, 255, 0.65)", width: 1.8 },
+        { amp: 0.13, freq: 0.027, speed: 3.1, color: "rgba(224, 53, 107, 0.5)", width: 1.4 },
       ];
       waves.forEach((wv) => {
         ctx.beginPath();
@@ -361,7 +361,7 @@
         }
         ctx.strokeStyle = wv.color;
         ctx.lineWidth = wv.width * dpr;
-        ctx.shadowColor = "rgba(74, 217, 255, 0.55)";
+        ctx.shadowColor = "rgba(0, 113, 227, 0.35)";
         ctx.shadowBlur = 12 * dpr * noise;
         ctx.stroke();
         ctx.shadowBlur = 0;
@@ -371,7 +371,7 @@
       ctx.beginPath();
       ctx.moveTo(0, mid);
       ctx.lineTo(w, mid);
-      ctx.strokeStyle = `rgba(182, 255, 106, ${(levelShown * 0.5).toFixed(3)})`;
+      ctx.strokeStyle = `rgba(23, 138, 66, ${(levelShown * 0.5).toFixed(3)})`;
       ctx.lineWidth = 1.2 * dpr;
       ctx.setLineDash([6 * dpr, 8 * dpr]);
       ctx.stroke();
@@ -532,8 +532,30 @@
   /* ----------------------------------------------------------
      Dynamic pricing (buy panel)
      ---------------------------------------------------------- */
-  const BASE = 249;
-  const WAS = 279;
+  /* Store settings (managed from admin.html) override the default prices */
+  const SETTINGS_KEY = "airpods-pro2-settings/v1";
+  let storeSettings = {};
+  try {
+    storeSettings = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || "{}") || {};
+  } catch (err) {
+    storeSettings = {};
+  }
+  const settingPrice = (v, fallback) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  };
+  const BASE = settingPrice(storeSettings.basePrice, 249);
+  const WAS = Math.max(settingPrice(storeSettings.wasPrice, 279), BASE);
+  const CARE_PRICE = (() => {
+    const n = Number(storeSettings.carePrice);
+    return storeSettings.carePrice !== undefined && storeSettings.carePrice !== "" && Number.isFinite(n) && n >= 0
+      ? n
+      : 49;
+  })();
+  const PRODUCT_NAME =
+    typeof storeSettings.productName === "string" && storeSettings.productName.trim()
+      ? storeSettings.productName.trim().slice(0, 40)
+      : "AirPods Pro 2";
   const MAX_QTY = 5;
 
   const totalPriceEl = $("#totalPrice");
@@ -546,6 +568,19 @@
   const qtyMinus = $("#qtyMinus");
   const qtyPlus = $("#qtyPlus");
   const caseRadios = $$('input[name="case"]');
+
+  /* apply admin settings: care-plan price, price labels, product name */
+  const careRadio = caseRadios.find((r) => (r.dataset.label || "").includes("AppleCare"));
+  if (careRadio) careRadio.value = String(CARE_PRICE);
+  $$(".js-from-price").forEach((el) => { el.textContent = `$${BASE}`; });
+  $$(".js-care-price").forEach((el) => { el.textContent = `$${CARE_PRICE}`; });
+  $$(".js-save-amount").forEach((el) => { el.textContent = `$${Math.max(0, WAS - BASE)}`; });
+  if (PRODUCT_NAME !== "AirPods Pro 2") {
+    const buyTitle = $(".buy__title");
+    if (buyTitle) buyTitle.textContent = PRODUCT_NAME;
+    const stickyName = $("#stickyBuy b");
+    if (stickyName) stickyName.textContent = PRODUCT_NAME;
+  }
   const engraveRadios = $$('input[name="engrave"]');
   const engraveWrap = $("#engraveWrap");
   const engraveInput = $("#engraveInput");
@@ -600,8 +635,14 @@
     const save = (WAS - BASE) * qty;
 
     animatePriceTo(total);
-    if (wasPriceEl) wasPriceEl.textContent = money(wasTotal);
-    if (savePillEl) savePillEl.textContent = `Save $${save}`;
+    if (wasPriceEl) {
+      wasPriceEl.textContent = money(wasTotal);
+      wasPriceEl.style.display = save > 0 ? "" : "none";
+    }
+    if (savePillEl) {
+      savePillEl.textContent = `Save $${save}`;
+      savePillEl.style.display = save > 0 ? "" : "none";
+    }
     if (monthlyEl) monthlyEl.textContent = `${money(total / 12)}/mo`;
     if (perUnitEl) perUnitEl.textContent = qty > 1 ? `${money(unit)} each` : "Free engraving included";
     if (stickyPriceEl) stickyPriceEl.textContent = money(total);
@@ -821,7 +862,7 @@
   function buildItem() {
     return {
       id: "airpods-pro-2",
-      name: "AirPods Pro 2",
+      name: PRODUCT_NAME,
       price: BASE + getAddon(),
       qty,
       care: getAddon() > 0,
@@ -926,6 +967,17 @@
       }
       subscribeMsg.textContent = "You’re in. First quiet update lands soon.";
       subscribeMsg.classList.remove("is-error");
+      /* store the subscriber so the admin panel can list/export them */
+      try {
+        const SUBS_KEY = "airpods-pro2-subscribers/v1";
+        const subs = JSON.parse(window.localStorage.getItem(SUBS_KEY) || "[]");
+        if (Array.isArray(subs) && !subs.some((s) => s && s.email === value)) {
+          subs.push({ email: value, date: new Date().toISOString() });
+          window.localStorage.setItem(SUBS_KEY, JSON.stringify(subs));
+        }
+      } catch (err) {
+        /* storage unavailable — the signup still confirms */
+      }
       subscribeEmail.value = "";
       showToast("Subscribed — welcome to the quiet list");
     });

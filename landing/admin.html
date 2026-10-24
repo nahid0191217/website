@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#ffffff" />
+<title>Admin Panel — AirPods Pro 2 Store</title>
+<meta name="description" content="Store admin panel: manage orders, product pricing and newsletter subscribers." />
+<meta name="robots" content="noindex" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/admin.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23ffffff'/%3E%3Ccircle cx='12' cy='12' r='4.2' fill='%231d1d1f'/%3E%3Crect x='10.6' y='13' width='2.8' height='10' rx='1.4' fill='%231d1d1f'/%3E%3Ccircle cx='22' cy='12' r='4.2' fill='%230071e3'/%3E%3Crect x='20.6' y='13' width='2.8' height='10' rx='1.4' fill='%230071e3'/%3E%3C/svg%3E" />
+</head>
+<body class="admin-page">
+
+<a class="skip-link" href="#adminMain">Skip to admin content</a>
+
+<!-- ================= LOGIN ================= -->
+<main class="admin-login" id="loginView">
+  <div class="login-card">
+    <span class="login-card__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="15.5" r="1.6" fill="currentColor"/></svg>
+    </span>
+    <h1>Admin Panel</h1>
+    <p class="login-card__sub">Sign in to manage orders, pricing and subscribers.</p>
+
+    <form id="loginForm" novalidate>
+      <label class="admin-label" for="adminPassword">Password</label>
+      <input class="admin-input" id="adminPassword" type="password" placeholder="Enter admin password" autocomplete="current-password" />
+      <p class="login-card__error" id="loginError" role="alert" hidden>Wrong password — please try again.</p>
+      <button class="btn btn--primary btn--block" type="submit">Sign in</button>
+    </form>
+
+    <p class="login-card__hint">Demo password: <b>admin123</b></p>
+    <a class="login-card__back" href="index.html">← Back to store</a>
+  </div>
+</main>
+
+<!-- ================= DASHBOARD ================= -->
+<div id="dashView" hidden>
+  <header class="admin-head">
+    <div class="container admin-head__inner">
+      <a class="brand" href="index.html" aria-label="AirPods Pro 2 store">
+        <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="11" cy="11" r="4.6" fill="currentColor"/>
+          <rect x="9.6" y="12" width="2.9" height="11" rx="1.45" fill="currentColor"/>
+          <circle cx="21" cy="11" r="4.6" fill="currentColor" opacity=".55"/>
+          <rect x="19.6" y="12" width="2.9" height="11" rx="1.45" fill="currentColor" opacity=".55"/>
+        </svg>
+        <span class="brand__text">AirPods <em>Pro</em></span>
+        <span class="admin-badge">Admin</span>
+      </a>
+      <div class="admin-head__actions">
+        <a class="btn btn--ghost btn--sm" href="index.html">View store</a>
+        <button class="btn btn--ghost btn--sm" id="logoutBtn" type="button">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container admin-main" id="adminMain" tabindex="-1">
+    <div class="admin-title">
+      <h1>Dashboard</h1>
+      <p>Orders from checkout, live store pricing and newsletter subscribers — all in one place.</p>
+    </div>
+
+    <!-- Stats -->
+    <section class="stat-grid" aria-label="Store statistics">
+      <article class="stat-card">
+        <span class="stat-card__label">Total revenue</span>
+        <span class="stat-card__value" id="statRevenue">$0.00</span>
+        <span class="stat-card__note">Excluding cancelled orders</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Orders</span>
+        <span class="stat-card__value" id="statOrders">0</span>
+        <span class="stat-card__note">All time</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Items sold</span>
+        <span class="stat-card__value" id="statItems">0</span>
+        <span class="stat-card__note">Units across orders</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Subscribers</span>
+        <span class="stat-card__value" id="statSubs">0</span>
+        <span class="stat-card__note">Newsletter signups</span>
+      </article>
+    </section>
+
+    <!-- Tabs -->
+    <div class="admin-tabs" role="tablist" aria-label="Admin sections">
+      <button type="button" class="admin-tab is-active" role="tab" aria-selected="true" data-tab="orders" aria-controls="panel-orders">Orders</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="settings" aria-controls="panel-settings">Product &amp; Pricing</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="subs" aria-controls="panel-subs">Subscribers</button>
+    </div>
+
+    <!-- ===== Orders panel ===== -->
+    <section class="admin-panel" id="panel-orders" role="tabpanel" aria-label="Orders">
+      <div class="admin-toolbar">
+        <input class="admin-input admin-toolbar__search" id="orderSearch" type="search" placeholder="Search order ID, name or email…" aria-label="Search orders" />
+        <select class="admin-select" id="orderFilter" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option>Pending</option>
+          <option>Confirmed</option>
+          <option>Shipped</option>
+          <option>Delivered</option>
+          <option>Cancelled</option>
+        </select>
+        <span class="admin-toolbar__spacer"></span>
+        <button type="button" class="btn btn--ghost btn--sm" id="seedOrders">Load demo orders</button>
+        <button type="button" class="btn btn--ghost btn--sm" id="exportOrders">Export CSV</button>
+        <button type="button" class="btn btn--sm admin-btn-danger" id="clearOrders">Clear all</button>
+      </div>
+
+      <div class="admin-table-wrap" id="ordersTableWrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th scope="col">Order</th>
+              <th scope="col">Date</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Items</th>
+              <th scope="col">Total</th>
+              <th scope="col">Payment</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+
+      <div class="admin-empty" id="ordersEmpty" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1.2 12.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 7Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <p><b>No orders yet.</b></p>
+        <p>Orders placed on the <a href="checkout.html">checkout page</a> appear here automatically — or load demo orders to see how it looks.</p>
+      </div>
+    </section>
+
+    <!-- ===== Settings panel ===== -->
+    <section class="admin-panel" id="panel-settings" role="tabpanel" aria-label="Product and pricing settings" hidden>
+      <form class="settings-card" id="settingsForm" novalidate>
+        <h2>Product &amp; pricing</h2>
+        <p class="settings-card__sub">Changes apply to the storefront instantly — just refresh the store page after saving.</p>
+
+        <div class="settings-grid">
+          <div class="settings-field settings-field--full">
+            <label class="admin-label" for="setName">Product name</label>
+            <input class="admin-input" id="setName" type="text" maxlength="40" />
+          </div>
+          <div class="settings-field">
+            <label class="admin-label" for="setBase">Selling price (USD)</label>
+            <input class="admin-input" id="setBase" type="number" min="1" step="1" inputmode="numeric" />
+          </div>
+          <div class="settings-field">
+            <label class="admin-label" for="setWas">Compare-at price (USD)</label>
+            <input class="admin-input" id="setWas" type="number" min="1" step="1" inputmode="numeric" />
+            <small>Shown struck-through; the difference becomes the “Save $X” offer.</small>
+          </div>
+          <div class="settings-field">
+            <label class="admin-label" for="setCare">AppleCare+ price (USD)</label>
+            <input class="admin-input" id="setCare" type="number" min="0" step="1" inputmode="numeric" />
+          </div>
+        </div>
+
+        <p class="settings-preview" id="settingsPreview" role="status"></p>
+
+        <div class="settings-actions">
+          <button class="btn btn--primary" type="submit">Save changes</button>
+          <button class="btn btn--ghost" type="button" id="resetSettings">Reset to defaults</button>
+        </div>
+        <p class="settings-msg" id="settingsMsg" role="status"></p>
+      </form>
+
+      <aside class="settings-note">
+        <h3>How this demo admin works</h3>
+        <p>This storefront is a static site, so the admin panel stores its data in your browser (localStorage) — orders, settings and subscribers live on this device only. For a real online store, the same screens would connect to a backend + database (e.g. Firebase, Supabase or your own server) so data is shared across devices and customers.</p>
+      </aside>
+    </section>
+
+    <!-- ===== Subscribers panel ===== -->
+    <section class="admin-panel" id="panel-subs" role="tabpanel" aria-label="Newsletter subscribers" hidden>
+      <div class="admin-toolbar">
+        <span class="admin-toolbar__spacer"></span>
+        <button type="button" class="btn btn--ghost btn--sm" id="copySubs">Copy all emails</button>
+        <button type="button" class="btn btn--ghost btn--sm" id="exportSubs">Export CSV</button>
+        <button type="button" class="btn btn--sm admin-btn-danger" id="clearSubs">Clear all</button>
+      </div>
+
+      <div class="admin-table-wrap" id="subsTableWrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th scope="col">Email</th>
+              <th scope="col">Subscribed</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="subsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="admin-empty" id="subsEmpty" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p><b>No subscribers yet.</b></p>
+        <p>Emails from the “Hear it first” form in the store footer will show up here.</p>
+      </div>
+    </section>
+
+    <p class="admin-footnote">AirPods Pro 2 concept store · Admin demo — data is stored locally in this browser.</p>
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/js/admin.js" defer></script>
+</body>
+</html>
