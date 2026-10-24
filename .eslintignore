@@ -7,3 +7,6 @@ out
 /tmp
 /public/data
 tsconfig.tsbuildinfo
+
+# standalone static landing page (vanilla HTML/CSS/JS, not part of the Next.js app)
+landing
