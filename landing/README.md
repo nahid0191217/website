@@ -11,6 +11,8 @@ landing/
   index.html            Landing page (hero, features, pricing, reviews…)
   checkout.html         Checkout flow
   admin.html            Admin panel (orders, pricing settings, subscribers)
+  server.py             Dev server with clean (extensionless) URLs
+  vercel.json           cleanUrls for Vercel deploys
   assets/
     css/style.css       Light-theme design system + landing styles (tokens shared)
     css/checkout.css    Checkout styles (loaded after style.css)
@@ -26,10 +28,10 @@ landing/
 
 ```bash
 cd landing
-python3 -m http.server 8080
+python3 server.py   # clean URLs: /checkout, /admin (no .html)
 # Store:     http://localhost:8080
-# Checkout:  http://localhost:8080/checkout.html
-# Admin:     http://localhost:8080/admin.html   (password: admin123)
+# Checkout:  http://localhost:8080/checkout
+# Admin:     http://localhost:8080/admin   (password: admin123)
 ```
 
 ## Admin panel
