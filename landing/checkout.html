@@ -26,7 +26,7 @@
         <circle cx="21" cy="11" r="4.6" fill="currentColor" opacity=".55"/>
         <rect x="19.6" y="12" width="2.9" height="11" rx="1.45" fill="currentColor" opacity=".55"/>
       </svg>
-      <span class="brand__text">AirPods <em>Pro</em></span>
+      <span class="brand__text" data-brand-name>AirPods Pro</span>
     </a>
 
     <span class="co-head__sep" aria-hidden="true"></span>
@@ -59,7 +59,7 @@
 
     <p class="demo-note">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 11v5.5M12 7.6v.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <span><b>Demo checkout.</b> No payment is taken and nothing ships. Use card <b>4242 4242 4242 4242</b> with any future expiry and any CVC.</span>
+      <span data-setting="checkout_note"><b>Demo checkout.</b> No payment is taken and nothing ships. Use card <b>4242 4242 4242 4242</b> with any future expiry and any CVC.</span>
     </p>
 
     <div class="co-grid" id="coGrid">
@@ -188,9 +188,9 @@
                   <span class="ship__radio" aria-hidden="true"></span>
                   <span class="ship__text">
                     <b>Standard</b>
-                    <small>Free · arrives <span data-eta="standard">in 3–5 days</span></small>
+                    <small><span data-shipping-fee="standard">Free</span> · arrives <span data-eta="standard">in 3–5 days</span></small>
                   </span>
-                  <span class="ship__price">Free</span>
+                  <span class="ship__price" data-shipping-fee="standard">Free</span>
                 </span>
               </label>
 
@@ -200,9 +200,9 @@
                   <span class="ship__radio" aria-hidden="true"></span>
                   <span class="ship__text">
                     <b>Express</b>
-                    <small>$12.00 · arrives <span data-eta="express">in 1–2 days</span></small>
+                    <small><span data-shipping-fee="express">$12.00</span> · arrives <span data-eta="express">in 1–2 days</span></small>
                   </span>
-                  <span class="ship__price">$12.00</span>
+                  <span class="ship__price" data-shipping-fee="express">$12.00</span>
                 </span>
               </label>
             </div>
@@ -313,7 +313,7 @@
 
         <p class="co-form__foot">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-          Your details are encrypted and never shared. This is a design demo — no real order is placed.
+          <span data-setting="checkout_help_text">Your details are encrypted and never shared. This is a design demo — no real payment is processed.</span>
         </p>
       </form>
 
@@ -366,8 +366,12 @@
               <dt>Discount <span id="discountLabel"></span></dt>
               <dd id="discountValue">−$0.00</dd>
             </div>
+            <div class="totals__row" id="taxRow" hidden>
+              <dt>Tax <span id="taxLabel"></span></dt>
+              <dd id="taxValue">$0.00</dd>
+            </div>
             <div class="totals__row totals__row--total">
-              <dt>Total <small>USD, taxes included</small></dt>
+              <dt>Total <small><span data-setting="currency_code">USD</span>, taxes calculated</small></dt>
               <dd id="totalValue">$0.00</dd>
             </div>
           </dl>
@@ -395,7 +399,7 @@
 
           <p class="summary__help">
             Questions? <a href="#">Read the FAQ</a> or email
-            <a href="mailto:help@airpodspro.example">help@airpodspro.example</a>
+            <a href="mailto:support@airpodspro.example" data-setting-mailto="support_email"><span data-setting="support_email">support@airpodspro.example</span></a>
           </p>
         </div>
       </aside>
@@ -456,10 +460,10 @@
 
 <footer class="co-foot">
   <div class="container co-foot__inner">
-    <p>© <span id="year">2026</span> AirPods Pro concept checkout. Fan-made design demo — not affiliated with Apple Inc.</p>
+    <p>© <span id="year">2026</span> <span data-setting="legal_note">AirPods Pro concept landing page. A fan‑made design demo — not affiliated with Apple Inc.</span></p>
     <nav aria-label="Checkout footer">
-      <a href="#">Privacy</a>
-      <a href="#">Terms</a>
+      <a href="#" data-setting-href="privacy_url">Privacy</a>
+      <a href="#" data-setting-href="terms_url">Terms</a>
       <a href="./">Store</a>
     </nav>
   </div>
@@ -468,6 +472,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="assets/js/cart.js" defer></script>
+<script src="assets/js/site.js" defer></script>
 <script src="assets/js/checkout.js" defer></script>
 </body>
 </html>

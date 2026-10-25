@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="theme-color" content="#ffffff" />
 <title>Admin Panel — AirPods Pro 2 Store</title>
-<meta name="description" content="Store admin panel: manage orders, product pricing and newsletter subscribers." />
+<meta name="description" content="SQLite-powered store admin: control website content, product, pricing, orders, reviews, promo codes and subscribers." />
 <meta name="robots" content="noindex" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,21 +21,27 @@
 
 <!-- ================= LOGIN ================= -->
 <main class="admin-login" id="loginView">
-  <div class="login-card">
+  <div class="login-card" id="loginCard">
     <span class="login-card__icon" aria-hidden="true">
       <svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="15.5" r="1.6" fill="currentColor"/></svg>
     </span>
     <h1>Admin Panel</h1>
-    <p class="login-card__sub">Sign in to manage orders, pricing and subscribers.</p>
+    <p class="login-card__sub">Sign in to control the whole website. Everything is stored in SQLite.</p>
 
     <form id="loginForm" novalidate>
-      <label class="admin-label" for="adminPassword">Password</label>
-      <input class="admin-input" id="adminPassword" type="password" placeholder="Enter admin password" autocomplete="current-password" />
-      <p class="login-card__error" id="loginError" role="alert" hidden>Wrong password — please try again.</p>
-      <button class="btn btn--primary btn--block" type="submit">Sign in</button>
+      <div>
+        <label class="admin-label" for="adminUsername">Username</label>
+        <input class="admin-input" id="adminUsername" type="text" value="admin" placeholder="admin" autocomplete="username" />
+      </div>
+      <div>
+        <label class="admin-label" for="adminPassword">Password</label>
+        <input class="admin-input" id="adminPassword" type="password" placeholder="Enter admin password" autocomplete="current-password" />
+      </div>
+      <p class="login-card__error" id="loginError" role="alert" hidden>Wrong username or password — please try again.</p>
+      <button class="btn btn--primary btn--block" id="loginSubmit" type="submit">Sign in</button>
     </form>
 
-    <p class="login-card__hint">Demo password: <b>admin123</b></p>
+    <p class="login-card__hint">Default login: <b>admin</b> / <b>admin123</b></p>
     <a class="login-card__back" href="./">← Back to store</a>
   </div>
 </main>
@@ -51,173 +57,272 @@
           <circle cx="21" cy="11" r="4.6" fill="currentColor" opacity=".55"/>
           <rect x="19.6" y="12" width="2.9" height="11" rx="1.45" fill="currentColor" opacity=".55"/>
         </svg>
-        <span class="brand__text">AirPods <em>Pro</em></span>
+        <span class="brand__text">AirPods Pro</span>
         <span class="admin-badge">Admin</span>
       </a>
       <div class="admin-head__actions">
-        <a class="btn btn--ghost btn--sm" href="./">View store</a>
+        <a class="btn btn--ghost btn--sm" href="./" target="_blank" rel="noopener">View store</a>
+        <a class="btn btn--ghost btn--sm" href="checkout" target="_blank" rel="noopener">Checkout</a>
         <button class="btn btn--ghost btn--sm" id="logoutBtn" type="button">Log out</button>
       </div>
     </div>
   </header>
 
   <main class="container admin-main" id="adminMain" tabindex="-1">
-    <div class="admin-title">
-      <h1>Dashboard</h1>
-      <p>Orders from checkout, live store pricing and newsletter subscribers — all in one place.</p>
+    <div class="admin-title admin-title--row">
+      <div>
+        <h1>Website Control Center</h1>
+        <p>Control content, product, pricing, stock, features, reviews, orders, promo codes and customers — all data is saved in SQLite.</p>
+      </div>
+      <div class="db-status" id="dbStatus"><span></span> SQLite connected</div>
     </div>
 
     <!-- Stats -->
-    <section class="stat-grid" aria-label="Store statistics">
-      <article class="stat-card">
-        <span class="stat-card__label">Total revenue</span>
-        <span class="stat-card__value" id="statRevenue">$0.00</span>
-        <span class="stat-card__note">Excluding cancelled orders</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Orders</span>
-        <span class="stat-card__value" id="statOrders">0</span>
-        <span class="stat-card__note">All time</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Items sold</span>
-        <span class="stat-card__value" id="statItems">0</span>
-        <span class="stat-card__note">Units across orders</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Subscribers</span>
-        <span class="stat-card__value" id="statSubs">0</span>
-        <span class="stat-card__note">Newsletter signups</span>
-      </article>
+    <section class="stat-grid stat-grid--wide" aria-label="Store statistics">
+      <article class="stat-card"><span class="stat-card__label">Total revenue</span><span class="stat-card__value" id="statRevenue">$0.00</span><span class="stat-card__note">Excluding cancelled orders</span></article>
+      <article class="stat-card"><span class="stat-card__label">Orders</span><span class="stat-card__value" id="statOrders">0</span><span class="stat-card__note"><span id="statPending">0</span> pending</span></article>
+      <article class="stat-card"><span class="stat-card__label">Items sold</span><span class="stat-card__value" id="statItems">0</span><span class="stat-card__note">Units across orders</span></article>
+      <article class="stat-card"><span class="stat-card__label">Subscribers</span><span class="stat-card__value" id="statSubs">0</span><span class="stat-card__note">Newsletter signups</span></article>
+      <article class="stat-card"><span class="stat-card__label">Active carts</span><span class="stat-card__value" id="statCarts">0</span><span class="stat-card__note">Bags not checked out yet</span></article>
+      <article class="stat-card"><span class="stat-card__label">Page views</span><span class="stat-card__value" id="statViews">0</span><span class="stat-card__note"><span id="statViewsToday">0</span> today</span></article>
+      <article class="stat-card"><span class="stat-card__label">Product stock</span><span class="stat-card__value" id="statStock">0</span><span class="stat-card__note">Current inventory</span></article>
+      <article class="stat-card"><span class="stat-card__label">Content</span><span class="stat-card__value" id="statContent">0</span><span class="stat-card__note">Features + reviews + promos</span></article>
     </section>
 
     <!-- Tabs -->
-    <div class="admin-tabs" role="tablist" aria-label="Admin sections">
-      <button type="button" class="admin-tab is-active" role="tab" aria-selected="true" data-tab="orders" aria-controls="panel-orders">Orders</button>
-      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="settings" aria-controls="panel-settings">Product &amp; Pricing</button>
-      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="subs" aria-controls="panel-subs">Subscribers</button>
+    <div class="admin-tabs admin-tabs--scroll" role="tablist" aria-label="Admin sections">
+      <button type="button" class="admin-tab is-active" role="tab" aria-selected="true" data-tab="overview" aria-controls="panel-overview">Overview</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="content" aria-controls="panel-content">Website Content</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="product" aria-controls="panel-product">Product</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="features" aria-controls="panel-features">Features</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="reviews" aria-controls="panel-reviews">Reviews</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="orders" aria-controls="panel-orders">Orders</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="promos" aria-controls="panel-promos">Promo Codes</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="audience" aria-controls="panel-audience">Customers</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="commerce" aria-controls="panel-commerce">Commerce</button>
+      <button type="button" class="admin-tab" role="tab" aria-selected="false" data-tab="system" aria-controls="panel-system">System</button>
     </div>
 
-    <!-- ===== Orders panel ===== -->
-    <section class="admin-panel" id="panel-orders" role="tabpanel" aria-label="Orders">
+    <!-- ===== Overview ===== -->
+    <section class="admin-panel" id="panel-overview" role="tabpanel" aria-label="Overview">
+      <div class="overview-grid">
+        <div class="admin-card">
+          <div class="admin-card__head">
+            <div><h2>Recent orders</h2><p>Latest orders saved in SQLite.</p></div>
+            <button class="btn btn--ghost btn--sm" type="button" data-goto-tab="orders">Manage orders</button>
+          </div>
+          <div class="mini-table-wrap">
+            <table class="admin-table admin-table--mini">
+              <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
+              <tbody id="recentOrdersBody"></tbody>
+            </table>
+          </div>
+          <div class="admin-empty admin-empty--small" id="recentOrdersEmpty" hidden><p><b>No orders yet.</b></p><p>New checkout orders will appear here.</p></div>
+        </div>
+
+        <div class="admin-card">
+          <div class="admin-card__head"><div><h2>Quick controls</h2><p>Most-used live switches.</p></div></div>
+          <label class="switch-row"><span><b>Store open</b><small>Turn off to show the maintenance message and block orders.</small></span><input type="checkbox" id="quickStoreOpen" /></label>
+          <label class="switch-row"><span><b>Announcement bar</b><small>Show or hide the offer bar at the top of the store.</small></span><input type="checkbox" id="quickAnnouncement" /></label>
+          <label class="switch-row"><span><b>Reviews section</b><small>Show or hide customer reviews on the landing page.</small></span><input type="checkbox" id="quickReviews" /></label>
+          <div class="product-mini" id="productMini"></div>
+          <div class="quick-actions">
+            <button class="btn btn--primary btn--sm" type="button" data-goto-tab="content">Edit website text</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-goto-tab="product">Price &amp; stock</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-goto-tab="features">Features</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-goto-tab="reviews">Reviews</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card admin-card--mt">
+        <div class="admin-card__head"><div><h2>Recent admin activity</h2><p>Latest changes made from this panel.</p></div><button class="btn btn--ghost btn--sm" type="button" id="refreshBtn">Refresh data</button></div>
+        <ul class="activity-list" id="recentActivity"></ul>
+      </div>
+    </section>
+
+    <!-- ===== Website content ===== -->
+    <section class="admin-panel" id="panel-content" role="tabpanel" aria-label="Website content" hidden>
+      <form id="contentForm" novalidate>
+        <div class="panel-intro">
+          <div><h2>Website content</h2><p>Edit almost every visible text, link, section heading, contact detail and on/off switch on the storefront. Save, then refresh the store to see it live.</p></div>
+          <a class="btn btn--ghost btn--sm" href="./" target="_blank" rel="noopener">Open store</a>
+        </div>
+        <div id="contentFields"></div>
+        <div class="settings-actions sticky-actions">
+          <button class="btn btn--primary" type="submit">Save website content</button>
+          <button class="btn btn--ghost" type="button" id="reloadContent">Reload saved values</button>
+        </div>
+        <p class="settings-msg" id="contentMsg" role="status"></p>
+      </form>
+    </section>
+
+    <!-- ===== Product ===== -->
+    <section class="admin-panel" id="panel-product" role="tabpanel" aria-label="Product" hidden>
+      <form id="productForm" novalidate>
+        <div class="panel-intro">
+          <div><h2>Product, pricing, images &amp; inventory</h2><p>These values drive the hero, buy box, cart and checkout. Orders always use the current database price on the server.</p></div>
+          <div class="product-preview" id="productPreview"></div>
+        </div>
+        <div id="productFields"></div>
+        <div class="settings-actions sticky-actions">
+          <button class="btn btn--primary" type="submit">Save product</button>
+          <button class="btn btn--ghost" type="button" id="reloadProduct">Reload saved values</button>
+        </div>
+        <p class="settings-msg" id="productMsg" role="status"></p>
+      </form>
+    </section>
+
+    <!-- ===== Features ===== -->
+    <section class="admin-panel" id="panel-features" role="tabpanel" aria-label="Features" hidden>
+      <div class="panel-intro"><div><h2>Feature cards</h2><p>Add, edit, reorder, hide or delete the bento feature cards on the landing page.</p></div><span class="count-pill" id="featureCount">0 features</span></div>
+      <div class="editor-layout">
+        <form class="editor-card" id="featureForm" novalidate>
+          <h3 id="featureEditorTitle">Add feature</h3>
+          <input type="hidden" id="featureId" />
+          <div id="featureFormFields"></div>
+          <div class="settings-actions"><button class="btn btn--primary" type="submit">Save feature</button><button class="btn btn--ghost" type="button" id="cancelFeature">Cancel</button></div>
+          <p class="settings-msg" id="featureMsg" role="status"></p>
+        </form>
+        <div class="entity-list" id="featuresList"></div>
+      </div>
+    </section>
+
+    <!-- ===== Reviews ===== -->
+    <section class="admin-panel" id="panel-reviews" role="tabpanel" aria-label="Reviews" hidden>
+      <div class="panel-intro"><div><h2>Customer reviews</h2><p>Manage the reviews shown in the storefront carousel. Product rating and total review count are in the Product tab.</p></div><span class="count-pill" id="reviewCount">0 reviews</span></div>
+      <div class="editor-layout">
+        <form class="editor-card" id="reviewForm" novalidate>
+          <h3 id="reviewEditorTitle">Add review</h3>
+          <input type="hidden" id="reviewId" />
+          <div id="reviewFormFields"></div>
+          <div class="settings-actions"><button class="btn btn--primary" type="submit">Save review</button><button class="btn btn--ghost" type="button" id="cancelReview">Cancel</button></div>
+          <p class="settings-msg" id="reviewMsg" role="status"></p>
+        </form>
+        <div class="entity-list" id="reviewsList"></div>
+      </div>
+    </section>
+
+    <!-- ===== Orders ===== -->
+    <section class="admin-panel" id="panel-orders" role="tabpanel" aria-label="Orders" hidden>
+      <div class="panel-intro"><div><h2>Orders</h2><p>Orders from checkout are stored in SQLite with items, totals, promo, payment label and delivery address.</p></div><span class="count-pill" id="orderCount">0 orders</span></div>
       <div class="admin-toolbar">
-        <input class="admin-input admin-toolbar__search" id="orderSearch" type="search" placeholder="Search order ID, name or email…" aria-label="Search orders" />
+        <input class="admin-input admin-toolbar__search" id="orderSearch" type="search" placeholder="Search order, name, email or phone…" aria-label="Search orders" />
         <select class="admin-select" id="orderFilter" aria-label="Filter by status">
-          <option value="">All statuses</option>
-          <option>Pending</option>
-          <option>Confirmed</option>
-          <option>Shipped</option>
-          <option>Delivered</option>
-          <option>Cancelled</option>
+          <option value="">All statuses</option><option>Pending</option><option>Confirmed</option><option>Shipped</option><option>Delivered</option><option>Cancelled</option>
         </select>
         <span class="admin-toolbar__spacer"></span>
         <button type="button" class="btn btn--ghost btn--sm" id="seedOrders">Load demo orders</button>
         <button type="button" class="btn btn--ghost btn--sm" id="exportOrders">Export CSV</button>
         <button type="button" class="btn btn--sm admin-btn-danger" id="clearOrders">Clear all</button>
       </div>
-
       <div class="admin-table-wrap" id="ordersTableWrap">
         <table class="admin-table">
-          <thead>
-            <tr>
-              <th scope="col">Order</th>
-              <th scope="col">Date</th>
-              <th scope="col">Customer</th>
-              <th scope="col">Items</th>
-              <th scope="col">Total</th>
-              <th scope="col">Payment</th>
-              <th scope="col">Status</th>
-              <th scope="col"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
+          <thead><tr><th scope="col">Order</th><th scope="col">Date</th><th scope="col">Customer</th><th scope="col">Items</th><th scope="col">Total</th><th scope="col">Payment</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
           <tbody id="ordersBody"></tbody>
         </table>
       </div>
-
       <div class="admin-empty" id="ordersEmpty" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h12l-1.2 12.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 7Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        <p><b>No orders yet.</b></p>
-        <p>Orders placed on the <a href="checkout">checkout page</a> appear here automatically — or load demo orders to see how it looks.</p>
+        <p><b>No orders found.</b></p><p>Orders placed on the <a href="checkout">checkout page</a> appear here automatically.</p>
       </div>
     </section>
 
-    <!-- ===== Settings panel ===== -->
-    <section class="admin-panel" id="panel-settings" role="tabpanel" aria-label="Product and pricing settings" hidden>
-      <form class="settings-card" id="settingsForm" novalidate>
-        <h2>Product &amp; pricing</h2>
-        <p class="settings-card__sub">Changes apply to the storefront instantly — just refresh the store page after saving.</p>
-
-        <div class="settings-grid">
-          <div class="settings-field settings-field--full">
-            <label class="admin-label" for="setName">Product name</label>
-            <input class="admin-input" id="setName" type="text" maxlength="40" />
-          </div>
-          <div class="settings-field">
-            <label class="admin-label" for="setBase">Selling price (USD)</label>
-            <input class="admin-input" id="setBase" type="number" min="1" step="1" inputmode="numeric" />
-          </div>
-          <div class="settings-field">
-            <label class="admin-label" for="setWas">Compare-at price (USD)</label>
-            <input class="admin-input" id="setWas" type="number" min="1" step="1" inputmode="numeric" />
-            <small>Shown struck-through; the difference becomes the “Save $X” offer.</small>
-          </div>
-          <div class="settings-field">
-            <label class="admin-label" for="setCare">AppleCare+ price (USD)</label>
-            <input class="admin-input" id="setCare" type="number" min="0" step="1" inputmode="numeric" />
-          </div>
-        </div>
-
-        <p class="settings-preview" id="settingsPreview" role="status"></p>
-
-        <div class="settings-actions">
-          <button class="btn btn--primary" type="submit">Save changes</button>
-          <button class="btn btn--ghost" type="button" id="resetSettings">Reset to defaults</button>
-        </div>
-        <p class="settings-msg" id="settingsMsg" role="status"></p>
-      </form>
-
-      <aside class="settings-note">
-        <h3>How this demo admin works</h3>
-        <p>This storefront is a static site, so the admin panel stores its data in your browser (localStorage) — orders, settings and subscribers live on this device only. For a real online store, the same screens would connect to a backend + database (e.g. Firebase, Supabase or your own server) so data is shared across devices and customers.</p>
-      </aside>
+    <!-- ===== Promo codes ===== -->
+    <section class="admin-panel" id="panel-promos" role="tabpanel" aria-label="Promo codes" hidden>
+      <div class="panel-intro"><div><h2>Promo codes</h2><p>Create percentage, fixed-amount or free-shipping codes. Checkout validates them against SQLite on the server.</p></div><span class="count-pill" id="promoCount">0 codes</span></div>
+      <div class="editor-layout">
+        <form class="editor-card" id="promoForm" novalidate>
+          <h3 id="promoEditorTitle">Add promo code</h3>
+          <input type="hidden" id="promoId" />
+          <div id="promoFormFields"></div>
+          <div class="settings-actions"><button class="btn btn--primary" type="submit">Save promo</button><button class="btn btn--ghost" type="button" id="cancelPromo">Cancel</button></div>
+          <p class="settings-msg" id="promoMsg" role="status"></p>
+        </form>
+        <div class="entity-list" id="promosList"></div>
+      </div>
     </section>
 
-    <!-- ===== Subscribers panel ===== -->
-    <section class="admin-panel" id="panel-subs" role="tabpanel" aria-label="Newsletter subscribers" hidden>
+    <!-- ===== Customers / audience ===== -->
+    <section class="admin-panel" id="panel-audience" role="tabpanel" aria-label="Customers and subscribers" hidden>
+      <div class="panel-intro"><div><h2>Subscribers</h2><p>Newsletter emails collected from the store footer.</p></div><span class="count-pill" id="subCount">0 subscribers</span></div>
       <div class="admin-toolbar">
         <span class="admin-toolbar__spacer"></span>
         <button type="button" class="btn btn--ghost btn--sm" id="copySubs">Copy all emails</button>
         <button type="button" class="btn btn--ghost btn--sm" id="exportSubs">Export CSV</button>
         <button type="button" class="btn btn--sm admin-btn-danger" id="clearSubs">Clear all</button>
       </div>
-
       <div class="admin-table-wrap" id="subsTableWrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th scope="col">Email</th>
-              <th scope="col">Subscribed</th>
-              <th scope="col"><span class="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody id="subsBody"></tbody>
-        </table>
+        <table class="admin-table admin-table--narrow"><thead><tr><th scope="col">Email</th><th scope="col">Source</th><th scope="col">Subscribed</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody id="subsBody"></tbody></table>
       </div>
+      <div class="admin-empty" id="subsEmpty" hidden><p><b>No subscribers yet.</b></p><p>Footer newsletter signups will show here.</p></div>
 
-      <div class="admin-empty" id="subsEmpty" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <p><b>No subscribers yet.</b></p>
-        <p>Emails from the “Hear it first” form in the store footer will show up here.</p>
+      <div class="subsection-head"><div><h2>Cart snapshots</h2><p>Visitor bags synced to SQLite — useful for seeing active and converted carts.</p></div><span class="count-pill" id="cartCount">0 carts</span></div>
+      <div class="admin-table-wrap" id="cartsTableWrap">
+        <table class="admin-table"><thead><tr><th>Cart</th><th>Items</th><th>Subtotal</th><th>Status</th><th>Updated</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="cartsBody"></tbody></table>
+      </div>
+      <div class="admin-empty" id="cartsEmpty" hidden><p><b>No carts yet.</b></p><p>When a visitor adds the product to their bag, the cart is synced here.</p></div>
+    </section>
+
+    <!-- ===== Commerce ===== -->
+    <section class="admin-panel" id="panel-commerce" role="tabpanel" aria-label="Commerce settings" hidden>
+      <form id="commerceForm" novalidate>
+        <div class="panel-intro"><div><h2>Commerce settings</h2><p>Currency, delivery charges, free-shipping threshold, tax and delivery estimates used by cart and checkout.</p></div></div>
+        <div id="commerceFields"></div>
+        <div class="settings-actions sticky-actions"><button class="btn btn--primary" type="submit">Save commerce settings</button><button class="btn btn--ghost" type="button" id="reloadCommerce">Reload saved values</button></div>
+        <p class="settings-msg" id="commerceMsg" role="status"></p>
+      </form>
+    </section>
+
+    <!-- ===== System ===== -->
+    <section class="admin-panel" id="panel-system" role="tabpanel" aria-label="System" hidden>
+      <div class="panel-intro"><div><h2>System, database &amp; account</h2><p>SQLite database tools, backups and admin security.</p></div></div>
+      <div class="system-grid">
+        <div class="admin-card">
+          <h3>SQLite database</h3>
+          <dl class="info-list">
+            <div><dt>Database file</dt><dd id="dbPath">data/site.db</dd></div>
+            <div><dt>Size</dt><dd id="dbSize">—</dd></div>
+            <div><dt>SQLite version</dt><dd id="sqliteVersion">—</dd></div>
+            <div><dt>Server time</dt><dd id="serverTime">—</dd></div>
+          </dl>
+          <div class="settings-actions">
+            <a class="btn btn--primary btn--sm" href="/api/admin/backup">Download DB backup</a>
+            <button class="btn btn--ghost btn--sm" type="button" id="exportJson">Export JSON</button>
+          </div>
+          <h4 class="mini-heading">Table rows</h4>
+          <div class="table-counts" id="tableCounts"></div>
+        </div>
+
+        <form class="admin-card" id="passwordForm" novalidate>
+          <h3>Change admin password</h3>
+          <p class="card-sub">Use at least 8 characters. Other signed-in sessions will be logged out.</p>
+          <div class="settings-field"><label class="admin-label" for="currentPassword">Current password</label><input class="admin-input" id="currentPassword" type="password" autocomplete="current-password" /></div>
+          <div class="settings-field"><label class="admin-label" for="newPassword">New password</label><input class="admin-input" id="newPassword" type="password" autocomplete="new-password" /></div>
+          <div class="settings-field"><label class="admin-label" for="confirmPassword">Confirm new password</label><input class="admin-input" id="confirmPassword" type="password" autocomplete="new-password" /></div>
+          <div class="settings-actions"><button class="btn btn--primary btn--sm" type="submit">Change password</button></div>
+          <p class="settings-msg" id="passwordMsg" role="status"></p>
+        </form>
+
+        <div class="admin-card danger-card">
+          <h3>Data tools</h3>
+          <p class="card-sub">Import old browser-local demo data, or reset editable website content back to the original defaults. Orders and subscribers are kept during a content reset.</p>
+          <div class="settings-actions settings-actions--stack">
+            <button class="btn btn--ghost btn--sm" type="button" id="importLegacy">Import old browser data</button>
+            <button class="btn btn--sm admin-btn-danger" type="button" id="resetContent">Reset content to defaults</button>
+          </div>
+          <p class="settings-msg" id="systemMsg" role="status"></p>
+          <h4 class="mini-heading">Activity log</h4>
+          <ul class="activity-list activity-list--compact" id="activityList"></ul>
+        </div>
       </div>
     </section>
 
-    <p class="admin-footnote">AirPods Pro 2 concept store · Admin demo — data is stored locally in this browser.</p>
+    <p class="admin-footnote">AirPods Pro 2 concept store · SQLite admin — run with <b>python3 server.py</b>. Database: <b>landing/data/site.db</b>.</p>
   </main>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
 <script src="assets/js/admin.js" defer></script>
 </body>
 </html>

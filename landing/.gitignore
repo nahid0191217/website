@@ -1,0 +1,6 @@
+# Runtime SQLite database (recreated/reseeded by server.py)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/.backup-*.db
+__pycache__/

@@ -6,14 +6,19 @@
   "use strict";
 
   const KEY = "airpods-pro2-bag/v1";
-  const MAX_QTY = 5;
+  const MAX_QTY = Math.max(1, Math.min(99, Number(window.__SITE__ && window.__SITE__.product && window.__SITE__.product.max_qty) || 5));
+  const CART_ID_KEY = "airpods-pro2-cart-id/v1";
   const subscribers = new Set();
 
-  const money = (n) =>
-    `$${Number(n).toLocaleString("en-US", {
+  const money = (n) => {
+    if (typeof window.SiteMoney === "function") return window.SiteMoney(n);
+    const site = window.SiteData || window.__SITE__ || {};
+    const symbol = (site.settings && site.settings.currency_symbol) || "$";
+    return `${symbol}${Number(n).toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
+  };
 
   const lineKey = (item) =>
     [item.id, item.care ? "care" : "std", item.engraving || ""].join("|");
@@ -26,6 +31,33 @@
     Number.isFinite(item.qty) &&
     item.qty > 0;
 
+  function makeCartId() {
+    return `cart-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+  let cartId = "";
+  try {
+    cartId = window.localStorage.getItem(CART_ID_KEY) || "";
+    if (!cartId) {
+      cartId = makeCartId();
+      window.localStorage.setItem(CART_ID_KEY, cartId);
+    }
+  } catch (err) {
+    cartId = makeCartId();
+  }
+  let syncTimer = null;
+  function syncToServer(items) {
+    if (!/^https?:$/.test(window.location.protocol) || typeof window.fetch !== "function") return;
+    window.clearTimeout(syncTimer);
+    syncTimer = window.setTimeout(() => {
+      window.fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cart_id: cartId, items }),
+        keepalive: true,
+      }).catch(() => {});
+    }, 250);
+  }
+
   function read() {
     try {
       const raw = window.localStorage.getItem(KEY);
@@ -36,12 +68,13 @@
     }
   }
 
-  function write(items) {
+  function write(items, options = {}) {
     try {
       window.localStorage.setItem(KEY, JSON.stringify(items));
     } catch (err) {
       /* private mode / quota — the UI still works for this page view */
     }
+    if (options.sync !== false) syncToServer(items);
     notify();
   }
 
@@ -83,6 +116,23 @@
     });
   }
 
+  function refreshProductPrices() {
+    const site = window.SiteData || window.__SITE__ || {};
+    const p = site.product;
+    if (!p || !Number.isFinite(Number(p.price))) return;
+    const items = read();
+    if (!items.length) return;
+    let changed = false;
+    const next = items.map((item) => {
+      const price = Number(p.price) + (item.care ? Number(p.care_price) || 0 : 0);
+      const updated = { ...item, id: p.slug || item.id, name: p.name || item.name, price };
+      if (updated.price !== item.price || updated.name !== item.name || updated.id !== item.id) changed = true;
+      return updated;
+    });
+    if (changed) write(next);
+    else syncToServer(items);
+  }
+
   const Cart = {
     money,
     lineKey,
@@ -90,6 +140,9 @@
     count,
     subtotal,
     badges: updateBadges,
+    cartId: () => cartId,
+    sync: () => syncToServer(read()),
+    refreshProductPrices,
 
     add(item) {
       const items = read();
@@ -126,7 +179,13 @@
       write(read().filter((item) => lineKey(item) !== key));
     },
 
-    clear() {
+    clear(options = {}) {
+      if (options.converted) {
+        write([], { sync: false });
+        cartId = makeCartId();
+        try { window.localStorage.setItem(CART_ID_KEY, cartId); } catch (err) {}
+        return;
+      }
       write([]);
     },
 
@@ -142,9 +201,10 @@
 
   window.AirPodsCart = Cart;
 
+  const initCart = () => { updateBadges(); refreshProductPrices(); };
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", updateBadges, { once: true });
+    document.addEventListener("DOMContentLoaded", initCart, { once: true });
   } else {
-    updateBadges();
+    initCart();
   }
 })();

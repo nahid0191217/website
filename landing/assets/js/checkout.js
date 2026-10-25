@@ -9,6 +9,16 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const money = (n) => (Cart ? Cart.money(n) : `$${Number(n).toFixed(2)}`);
+  const SITE = window.SiteData || window.__SITE__ || {};
+  const siteSettings = SITE.settings || {};
+  const siteProduct = SITE.product || {};
+  const siteNumber = (key, fallback) => {
+    const n = Number(siteSettings[key]);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const money0 = (n) => (typeof window.SiteMoney === "function" ? window.SiteMoney(n, true) : money(n).replace(/\.00$/, ""));
+  const PRODUCT_IMAGE = siteProduct.image || "assets/img/case.jpg";
+  const STORE_OPEN = siteSettings.store_open !== false;
 
   const form = $("#checkoutForm");
   if (!form) return;
@@ -24,6 +34,9 @@
     discountRow: $("#discountRow"),
     discount: $("#discountValue"),
     discountLabel: $("#discountLabel"),
+    taxRow: $("#taxRow"),
+    tax: $("#taxValue"),
+    taxLabel: $("#taxLabel"),
     total: $("#totalValue"),
     place: $("#placeOrder"),
     placeLabel: $("#placeOrderLabel"),
@@ -55,7 +68,12 @@
     QUIET10: { type: "percent", value: 10, label: "QUIET10 · 10% off" },
     FREESHIP: { type: "shipping", value: 0, label: "FREESHIP · free delivery" },
   };
-  const SHIPPING_COST = { standard: 0, express: 12 };
+  const SHIPPING_COST = {
+    standard: Math.max(0, siteNumber("standard_shipping_fee", 0)),
+    express: Math.max(0, siteNumber("express_shipping_fee", 12)),
+  };
+  const FREE_SHIPPING_THRESHOLD = Math.max(0, siteNumber("free_shipping_threshold", 200));
+  const TAX_PERCENT = Math.max(0, Math.min(100, siteNumber("tax_percent", 0)));
 
   const state = {
     shipping: "standard",
@@ -83,8 +101,8 @@
   });
 
   const ETAS = {
-    standard: { min: 4, max: 6, label: "3–5 business days" },
-    express: { min: 1, max: 2, label: "1–2 business days" },
+    standard: { min: siteNumber("standard_eta_min_days", 4), max: siteNumber("standard_eta_max_days", 6), label: "3–5 business days" },
+    express: { min: siteNumber("express_eta_min_days", 1), max: siteNumber("express_eta_max_days", 2), label: "1–2 business days" },
   };
 
   const etaText = (method) => {
@@ -105,14 +123,20 @@
      ---------------------------------------------------------- */
   function totals() {
     const subtotal = Cart ? Cart.subtotal() : 0;
-    const freeShip = state.promo && state.promo.type === "shipping";
+    const freeShip = Boolean(
+      (state.promo && state.promo.type === "shipping") ||
+      (FREE_SHIPPING_THRESHOLD > 0 && subtotal >= FREE_SHIPPING_THRESHOLD)
+    );
     const shipping = freeShip ? 0 : SHIPPING_COST[state.shipping] || 0;
-    const discount =
-      state.promo && state.promo.type === "percent"
-        ? Math.round(subtotal * state.promo.value) / 100
-        : 0;
-    const total = Math.round((subtotal + shipping - discount) * 100) / 100;
-    return { subtotal, shipping, discount, total, freeShip };
+    let discount = 0;
+    if (state.promo && state.promo.type === "percent") {
+      discount = Math.round(subtotal * Number(state.promo.value)) / 100;
+    } else if (state.promo && state.promo.type === "fixed") {
+      discount = Math.min(subtotal, Math.max(0, Number(state.promo.value) || 0));
+    }
+    const tax = Math.round(Math.max(0, subtotal - discount) * TAX_PERCENT) / 100;
+    const total = Math.round((subtotal + shipping + tax - discount) * 100) / 100;
+    return { subtotal, shipping, discount, tax, total, freeShip };
   }
 
   /* ----------------------------------------------------------
@@ -132,7 +156,7 @@
 
     const thumb = el("div", "line__thumb");
     const img = document.createElement("img");
-    img.src = "assets/img/case.jpg";
+    img.src = PRODUCT_IMAGE;
     img.alt = "";
     img.loading = "lazy";
     img.width = 120;
@@ -143,7 +167,7 @@
     body.appendChild(el("p", "line__title", item.name));
 
     const opts = el("div", "line__opts");
-    if (item.care) opts.appendChild(el("span", null, "AppleCare+ · 2 years"));
+    if (item.care) opts.appendChild(el("span", null, `${siteProduct.care_name || "AppleCare+"} · ${siteProduct.care_description || "2 years"}`));
     if (item.engraving) {
       const span = el("span");
       span.append("Engraved ");
@@ -192,7 +216,11 @@
     els.empty.hidden = !isEmpty;
     els.list.hidden = isEmpty;
     els.promoForm.closest(".promo").hidden = isEmpty;
-    els.place.disabled = isEmpty || state.placing;
+    els.place.disabled = isEmpty || state.placing || !STORE_OPEN;
+    if (!STORE_OPEN) {
+      els.status.textContent = siteSettings.maintenance_message || "The store is temporarily closed.";
+      els.status.classList.add("is-error");
+    }
     if (isEmpty) state.promo = null;
 
     const t = totals();
@@ -210,6 +238,16 @@
       els.discountLabel.textContent = state.promo ? `(${state.promo.code})` : "";
     }
 
+    if (els.taxRow && els.tax) {
+      els.taxRow.hidden = !(t.tax > 0);
+      els.tax.textContent = money(t.tax);
+      if (els.taxLabel) els.taxLabel.textContent = TAX_PERCENT ? `(${TAX_PERCENT}%)` : "";
+    }
+    $$("[data-shipping-fee]").forEach((node) => {
+      const method = node.dataset.shippingFee === "express" ? "express" : "standard";
+      const fee = FREE_SHIPPING_THRESHOLD > 0 && t.subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST[method];
+      node.textContent = fee === 0 ? "Free" : money(fee);
+    });
     els.total.textContent = money(t.total);
     els.placeLabel.textContent = isEmpty
       ? "Place order"
@@ -267,17 +305,23 @@
     }
   }
 
-  $("#addDemoItem").addEventListener("click", () => {
-    Cart.add({ id: "airpods-pro-2", name: "AirPods Pro 2", price: 249, qty: 1 });
-    toast("AirPods Pro 2 added to your bag.");
-    refreshBadges();
-    els.promoInput.focus({ preventScroll: true });
-  });
+  const demoItemBtn = $("#addDemoItem");
+  if (demoItemBtn) {
+    const demoName = siteProduct.name || "AirPods Pro 2";
+    const demoPrice = Number(siteProduct.price) || 249;
+    demoItemBtn.textContent = `Add ${demoName} — ${money0(demoPrice)}`;
+    demoItemBtn.addEventListener("click", () => {
+      Cart.add({ id: siteProduct.slug || "airpods-pro-2", name: demoName, price: demoPrice, qty: 1 });
+      toast(`${demoName} added to your bag.`);
+      refreshBadges();
+      els.promoInput.focus({ preventScroll: true });
+    });
+  }
 
   /* ----------------------------------------------------------
      Promo codes
      ---------------------------------------------------------- */
-  function applyPromo(code) {
+  async function applyPromo(code) {
     const clean = String(code || "").trim().toUpperCase();
     els.promoMsg.classList.remove("is-error");
 
@@ -286,17 +330,42 @@
       els.promoMsg.textContent = "Enter a promo code first.";
       return;
     }
-    if (!PROMOS[clean]) {
-      els.promoMsg.classList.add("is-error");
-      els.promoMsg.textContent = `“${clean}” isn’t a valid code. Try QUIET10.`;
-      return;
+
+    const applyLocal = () => {
+      if (!PROMOS[clean]) return false;
+      state.promo = { code: clean, ...PROMOS[clean] };
+      return true;
+    };
+
+    els.promoMsg.textContent = "Checking code…";
+    try {
+      if (typeof window.fetch !== "function" || !/^https?:$/.test(window.location.protocol)) throw new Error("offline");
+      const res = await window.fetch("/api/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: clean, items: Cart ? Cart.items() : [], shipping_method: state.shipping }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json || !json.promo) {
+        els.promoMsg.classList.add("is-error");
+        els.promoMsg.textContent = (json && json.error) || `“${clean}” isn’t a valid code.`;
+        return;
+      }
+      state.promo = json.promo;
+    } catch (err) {
+      if (!applyLocal()) {
+        els.promoMsg.classList.add("is-error");
+        els.promoMsg.textContent = `“${clean}” isn’t a valid code. Try QUIET10.`;
+        return;
+      }
     }
 
-    state.promo = { code: clean, ...PROMOS[clean] };
     els.promoMsg.textContent =
       state.promo.type === "percent"
-        ? "10% off applied to your subtotal."
-        : "Delivery is on us.";
+        ? `${state.promo.value}% off applied to your subtotal.`
+        : state.promo.type === "fixed"
+          ? "Discount applied to your subtotal."
+          : "Delivery is on us.";
     els.promoInput.value = "";
     renderCart();
     toast(`${clean} applied.`);
@@ -560,32 +629,87 @@
     return `Card ending ${digits.slice(-4)}`;
   }
 
-  function completeOrder() {
+  async function completeOrder() {
     const items = Cart.items();
     const t = totals();
-    const orderNumber =
-      "AP2-" +
-      Date.now().toString(36).slice(-4).toUpperCase() +
-      Math.floor(Math.random() * 900 + 100);
+    const val = (id) => {
+      const node = document.getElementById(id);
+      return node ? node.value.trim() : "";
+    };
+    const email = val("co-email");
+    const firstName = val("co-first");
+    const customerName = `${firstName} ${val("co-last")}`.trim();
+    const payload = {
+      cart_id: Cart && typeof Cart.cartId === "function" ? Cart.cartId() : "",
+      customer: { name: customerName, email, phone: val("co-phone") },
+      address: {
+        address1: val("co-address1"),
+        address2: val("co-address2"),
+        city: val("co-city"),
+        region: val("co-region"),
+        postcode: val("co-postcode"),
+        country: val("co-country"),
+      },
+      items,
+      promo: state.promo ? state.promo.code : "",
+      shipping_method: state.shipping,
+      payment_method: state.payment,
+      payment_label: paymentLabel(),
+    };
 
-    const email = $("#co-email").value.trim();
-    const firstName = $("#co-first").value.trim();
+    let savedOrder = null;
+    let apiError = "";
+    try {
+      if (typeof window.fetch === "function" && /^https?:$/.test(window.location.protocol)) {
+        els.status.textContent = "Saving your order…";
+        const res = await window.fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json || !json.order) {
+          apiError = (json && json.error) || "The order could not be saved. Please try again.";
+        } else {
+          savedOrder = json.order;
+        }
+      }
+    } catch (err) {
+      savedOrder = null; // static/offline fallback below
+    }
+
+    if (apiError) {
+      state.placing = false;
+      els.place.disabled = false;
+      els.place.classList.remove("is-loading");
+      els.placeLabel.textContent = `Place order · ${money(t.total)}`;
+      els.status.textContent = apiError;
+      els.status.classList.add("is-error");
+      toast(apiError, true);
+      return;
+    }
+
+    const displayItems = savedOrder && Array.isArray(savedOrder.items) && savedOrder.items.length ? savedOrder.items : items;
+    const finalTotal = savedOrder ? Number(savedOrder.total) : t.total;
+    const orderNumber =
+      (savedOrder && (savedOrder.order_no || savedOrder.id)) ||
+      "AP2-" + Date.now().toString(36).slice(-4).toUpperCase() + Math.floor(Math.random() * 900 + 100);
 
     $("#successName").textContent = firstName || "friend";
     $("#successEmail").textContent = email;
     $("#orderNumber").textContent = orderNumber;
-    $("#successTotal").textContent = money(t.total);
+    $("#successTotal").textContent = money(finalTotal);
     $("#successEta").textContent = etaLong(state.shipping);
     $("#successPayment").textContent = paymentLabel();
 
     const lines = $("#successLines");
     lines.innerHTML = "";
-    items.forEach((item) => {
+    displayItems.forEach((item) => {
       const li = document.createElement("li");
       const left = document.createElement("span");
       left.append(`${item.qty} × ${item.name}`);
       const opts = [];
-      if (item.care) opts.push("AppleCare+");
+      if (item.care) opts.push(siteProduct.care_name || "AppleCare+");
       if (item.engraving) opts.push(`Engraved “${item.engraving}”`);
       if (opts.length) {
         const small = document.createElement("small");
@@ -594,7 +718,7 @@
         left.appendChild(small);
       }
       const price = document.createElement("b");
-      price.textContent = money(item.price * item.qty);
+      price.textContent = money((Number(item.price ?? item.unit_price) || 0) * item.qty);
       li.append(left, price);
       lines.appendChild(li);
     });
@@ -602,61 +726,50 @@
     els.grid.hidden = true;
     els.demoNote.hidden = true;
     els.success.hidden = false;
-
     setStep("done");
 
-    /* persist the order so the admin panel (admin.html) can manage it */
-    try {
-      const ORDERS_KEY = "airpods-pro2-orders/v1";
-      const orders = JSON.parse(window.localStorage.getItem(ORDERS_KEY) || "[]");
-      const val = (id) => {
-        const node = document.getElementById(id);
-        return node ? node.value.trim() : "";
-      };
-      if (Array.isArray(orders)) {
-        orders.unshift({
-          id: orderNumber,
-          date: new Date().toISOString(),
-          customer: `${firstName} ${val("co-last")}`.trim(),
-          email,
-          phone: val("co-phone"),
-          address: [val("co-address1"), val("co-city"), val("co-region"), val("co-postcode"), val("co-country")]
-            .filter(Boolean)
-            .join(", "),
-          items: items.map((i) => ({
-            name: i.name,
-            qty: i.qty,
-            price: i.price,
-            care: Boolean(i.care),
-            engraving: i.engraving || "",
-          })),
-          subtotal: t.subtotal,
-          discount: t.discount,
-          shipping: t.shipping,
-          total: t.total,
-          promo: state.promo ? state.promo.code : "",
-          payment: paymentLabel(),
-          shippingMethod: state.shipping,
-          status: "Pending",
-        });
-        window.localStorage.setItem(ORDERS_KEY, JSON.stringify(orders.slice(0, 200)));
+    /* Offline/static fallback only: normal orders are already saved in SQLite. */
+    if (!savedOrder) {
+      try {
+        const ORDERS_KEY = "airpods-pro2-orders/v1";
+        const orders = JSON.parse(window.localStorage.getItem(ORDERS_KEY) || "[]");
+        if (Array.isArray(orders)) {
+          orders.unshift({
+            id: orderNumber,
+            date: new Date().toISOString(),
+            customer: customerName,
+            email,
+            phone: val("co-phone"),
+            address: [val("co-address1"), val("co-city"), val("co-region"), val("co-postcode"), val("co-country")].filter(Boolean).join(", "),
+            items: items.map((i) => ({ name: i.name, qty: i.qty, price: i.price, care: Boolean(i.care), engraving: i.engraving || "" })),
+            subtotal: t.subtotal,
+            discount: t.discount,
+            shipping: t.shipping,
+            tax: t.tax,
+            total: t.total,
+            promo: state.promo ? state.promo.code : "",
+            payment: paymentLabel(),
+            shippingMethod: state.shipping,
+            status: "Pending",
+          });
+          window.localStorage.setItem(ORDERS_KEY, JSON.stringify(orders.slice(0, 200)));
+        }
+      } catch (err) {
+        /* storage unavailable — the demo confirmation still completes */
       }
-    } catch (err) {
-      /* storage unavailable — the order still completes */
     }
 
-    Cart.clear();
+    Cart.clear({ converted: Boolean(savedOrder) });
     refreshBadges();
     state.placing = false;
     els.place.classList.remove("is-loading");
 
-    document.title = "Order confirmed — AirPods Pro 2";
+    document.title = `Order confirmed — ${siteProduct.name || "AirPods Pro 2"}`;
     window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
     window.setTimeout(() => {
       const title = $("#successTitle");
       if (title) title.focus({ preventScroll: true });
     }, reduceMotion ? 0 : 320);
-
     els.success.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
   }
 

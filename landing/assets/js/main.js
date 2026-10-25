@@ -532,31 +532,41 @@
   /* ----------------------------------------------------------
      Dynamic pricing (buy panel)
      ---------------------------------------------------------- */
-  /* Store settings (managed from admin.html) override the default prices */
-  const SETTINGS_KEY = "airpods-pro2-settings/v1";
-  let storeSettings = {};
+  /* SQLite-managed product/settings from server.py (window.__SITE__). */
+  const SITE = window.SiteData || window.__SITE__ || {};
+  const siteSettings = SITE.settings || {};
+  const siteProduct = SITE.product || {};
+  let legacySettings = {};
   try {
-    storeSettings = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || "{}") || {};
+    legacySettings = JSON.parse(window.localStorage.getItem("airpods-pro2-settings/v1") || "{}") || {};
   } catch (err) {
-    storeSettings = {};
+    legacySettings = {};
   }
   const settingPrice = (v, fallback) => {
     const n = Number(v);
     return Number.isFinite(n) && n > 0 ? n : fallback;
   };
-  const BASE = settingPrice(storeSettings.basePrice, 249);
-  const WAS = Math.max(settingPrice(storeSettings.wasPrice, 279), BASE);
+  const money0 = (n) => (typeof window.SiteMoney === "function" ? window.SiteMoney(n, true) : money(n).replace(/\.00$/, ""));
+  const BASE = settingPrice(siteProduct.price ?? legacySettings.basePrice, 249);
+  const WAS = Math.max(settingPrice(siteProduct.compare_at_price ?? legacySettings.wasPrice, 279), BASE);
   const CARE_PRICE = (() => {
-    const n = Number(storeSettings.carePrice);
-    return storeSettings.carePrice !== undefined && storeSettings.carePrice !== "" && Number.isFinite(n) && n >= 0
-      ? n
-      : 49;
+    const raw = siteProduct.care_price ?? legacySettings.carePrice;
+    const n = Number(raw);
+    return raw !== undefined && raw !== "" && Number.isFinite(n) && n >= 0 ? n : 49;
   })();
   const PRODUCT_NAME =
-    typeof storeSettings.productName === "string" && storeSettings.productName.trim()
-      ? storeSettings.productName.trim().slice(0, 40)
-      : "AirPods Pro 2";
-  const MAX_QTY = 5;
+    typeof siteProduct.name === "string" && siteProduct.name.trim()
+      ? siteProduct.name.trim().slice(0, 120)
+      : typeof legacySettings.productName === "string" && legacySettings.productName.trim()
+        ? legacySettings.productName.trim().slice(0, 120)
+        : "AirPods Pro 2";
+  const PRODUCT_ID = siteProduct.slug || "airpods-pro-2";
+  const PRODUCT_IMAGE = siteProduct.image || "assets/img/case.jpg";
+  const MAX_QTY = clamp(Math.round(Number(siteProduct.max_qty) || 5), 1, 99);
+  const ENGRAVE_MAX = clamp(Math.round(Number(siteSettings.engraving_max_length) || 14), 1, 40);
+  const ENGRAVING_ENABLED = siteSettings.engraving_enabled !== false;
+  const DELIVERY_CUTOFF_HOUR = clamp(Math.round(Number(siteSettings.delivery_cutoff_hour) ?? 16) || 0, 0, 23);
+  const DELIVERY_BUSINESS_DAYS = clamp(Math.round(Number(siteSettings.delivery_business_days) || 2), 0, 60);
 
   const totalPriceEl = $("#totalPrice");
   const wasPriceEl = $("#wasPrice");
@@ -571,21 +581,31 @@
 
   /* apply admin settings: care-plan price, price labels, product name */
   const careRadio = caseRadios.find((r) => (r.dataset.label || "").includes("AppleCare"));
-  if (careRadio) careRadio.value = String(CARE_PRICE);
-  $$(".js-from-price").forEach((el) => { el.textContent = `$${BASE}`; });
-  $$(".js-care-price").forEach((el) => { el.textContent = `$${CARE_PRICE}`; });
-  $$(".js-save-amount").forEach((el) => { el.textContent = `$${Math.max(0, WAS - BASE)}`; });
-  if (PRODUCT_NAME !== "AirPods Pro 2") {
-    const buyTitle = $(".buy__title");
-    if (buyTitle) buyTitle.textContent = PRODUCT_NAME;
-    const stickyName = $("#stickyBuy b");
-    if (stickyName) stickyName.textContent = PRODUCT_NAME;
+  if (careRadio) {
+    careRadio.value = String(CARE_PRICE);
+    careRadio.dataset.label = `${siteProduct.care_name || "AppleCare+"} (${siteProduct.care_description || "2 yrs"})`;
+  }
+  $$(".js-from-price").forEach((el) => { el.textContent = money0(BASE); });
+  $$(".js-care-price").forEach((el) => { el.textContent = money0(CARE_PRICE); });
+  $$(".js-save-amount").forEach((el) => { el.textContent = money0(Math.max(0, WAS - BASE)); });
+  $$("[data-product-name]").forEach((el) => { el.textContent = PRODUCT_NAME; });
+  const productSubtitle = $("[data-product-subtitle]");
+  if (productSubtitle) {
+    productSubtitle.textContent = siteProduct.subtitle || "";
+    productSubtitle.style.display = siteProduct.subtitle ? "" : "none";
   }
   const engraveRadios = $$('input[name="engrave"]');
   const engraveWrap = $("#engraveWrap");
   const engraveInput = $("#engraveInput");
   const engraveCount = $("#engraveCount");
   const engravePreview = $("#engravePreview");
+  if (engraveInput) {
+    engraveInput.maxLength = ENGRAVE_MAX;
+    const engraveMaxEl = $("#engraveMax");
+    if (engraveMaxEl) engraveMaxEl.textContent = String(ENGRAVE_MAX);
+  }
+  const engravingFieldset = $("[data-engraving-fieldset]");
+  if (engravingFieldset && !ENGRAVING_ENABLED) engravingFieldset.style.display = "none";
 
   let qty = 1;
   let displayedTotal = BASE;
@@ -599,8 +619,8 @@
     const checked = caseRadios.find((r) => r.checked);
     return checked ? checked.dataset.label || "USB-C case" : "USB-C case";
   };
-  const engravingOn = () => engraveRadios.some((r) => r.checked && r.value === "on");
-  const engravingText = () => (engravingOn() && engraveInput ? engraveInput.value.trim().slice(0, 14) : "");
+  const engravingOn = () => ENGRAVING_ENABLED && engraveRadios.some((r) => r.checked && r.value === "on");
+  const engravingText = () => (engravingOn() && engraveInput ? engraveInput.value.trim().slice(0, ENGRAVE_MAX) : "");
 
   function animatePriceTo(target) {
     if (!totalPriceEl) return;
@@ -640,7 +660,7 @@
       wasPriceEl.style.display = save > 0 ? "" : "none";
     }
     if (savePillEl) {
-      savePillEl.textContent = `Save $${save}`;
+      savePillEl.textContent = `Save ${money0(save)}`;
       savePillEl.style.display = save > 0 ? "" : "none";
     }
     if (monthlyEl) monthlyEl.textContent = `${money(total / 12)}/mo`;
@@ -651,7 +671,7 @@
     if (qtyPlus) qtyPlus.toggleAttribute("disabled", qty >= MAX_QTY);
 
     const qtyNote = $("#qtyNote");
-    if (qtyNote) qtyNote.textContent = qty >= MAX_QTY ? "Limit reached (5 per order)" : "Limit 5 per order";
+    if (qtyNote) qtyNote.textContent = qty >= MAX_QTY ? `Limit reached (${MAX_QTY} per order)` : `Limit ${MAX_QTY} per order`;
   }
 
   if (qtyMinus) qtyMinus.addEventListener("click", () => { qty = clamp(qty - 1, 1, MAX_QTY); updatePricing(); });
@@ -704,7 +724,7 @@
     const updateDelivery = () => {
       const now = new Date();
       const cutoff = new Date(now);
-      cutoff.setHours(16, 0, 0, 0);
+      cutoff.setHours(DELIVERY_CUTOFF_HOUR, 0, 0, 0);
       let shipBase = now;
       if (now > cutoff) {
         cutoff.setDate(cutoff.getDate() + 1);
@@ -714,7 +734,7 @@
       const h = Math.floor(ms / 3_600_000);
       const m = Math.floor((ms % 3_600_000) / 60_000);
       orderByEl.textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
-      deliveryDateEl.textContent = fmt(addBusinessDays(shipBase, 2));
+      deliveryDateEl.textContent = fmt(addBusinessDays(shipBase, DELIVERY_BUSINESS_DAYS));
     };
     updateDelivery();
     window.setInterval(updateDelivery, 30_000);
@@ -733,7 +753,7 @@
   const shipBarFill = $("#shipBarFill");
   const shipBlock = $("#shipBlock");
   const cartBtn = $("#cartBtn");
-  const FREE_SHIP = 200;
+  const FREE_SHIP = Math.max(0, Number(siteSettings.free_shipping_threshold) ?? 200);
   let lastFocus = null;
   let lastCount = Cart ? Cart.count() : 0;
 
@@ -751,7 +771,7 @@
         ].join("<br />");
         return `
         <li class="ditem">
-          <img class="ditem__img" src="assets/img/case.jpg" alt="" width="72" height="72" />
+          <img class="ditem__img" src="${escapeHtml(PRODUCT_IMAGE)}" alt="" width="72" height="72" />
           <div class="ditem__info">
             <b>${escapeHtml(item.name)}</b>
             <span class="ditem__meta">${meta}</span>
@@ -861,11 +881,11 @@
      ---------------------------------------------------------- */
   function buildItem() {
     return {
-      id: "airpods-pro-2",
+      id: PRODUCT_ID,
       name: PRODUCT_NAME,
       price: BASE + getAddon(),
       qty,
-      care: getAddon() > 0,
+      care: Boolean(careRadio && careRadio.checked),
       engraving: engravingText(),
     };
   }
@@ -896,7 +916,7 @@
   const prevBtn = $("#prevReview");
   const nextBtn = $("#nextReview");
 
-  if (track && viewport) {
+  if (track && viewport && $$(".review", track).length) {
     const slides = $$(".review", track);
     let index = 0;
     let autoTimer = null;
@@ -967,16 +987,26 @@
       }
       subscribeMsg.textContent = "You’re in. First quiet update lands soon.";
       subscribeMsg.classList.remove("is-error");
-      /* store the subscriber so the admin panel can list/export them */
-      try {
-        const SUBS_KEY = "airpods-pro2-subscribers/v1";
-        const subs = JSON.parse(window.localStorage.getItem(SUBS_KEY) || "[]");
-        if (Array.isArray(subs) && !subs.some((s) => s && s.email === value)) {
-          subs.push({ email: value, date: new Date().toISOString() });
-          window.localStorage.setItem(SUBS_KEY, JSON.stringify(subs));
+      const saveSubscriberLocally = () => {
+        try {
+          const SUBS_KEY = "airpods-pro2-subscribers/v1";
+          const subs = JSON.parse(window.localStorage.getItem(SUBS_KEY) || "[]");
+          if (Array.isArray(subs) && !subs.some((s) => s && s.email === value)) {
+            subs.push({ email: value, date: new Date().toISOString() });
+            window.localStorage.setItem(SUBS_KEY, JSON.stringify(subs));
+          }
+        } catch (err) {
+          /* storage unavailable — the signup still confirms */
         }
-      } catch (err) {
-        /* storage unavailable — the signup still confirms */
+      };
+      if (typeof window.fetch === "function" && /^https?:$/.test(window.location.protocol)) {
+        window.fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: value, source: "landing-footer" }),
+        }).then((res) => { if (!res.ok) saveSubscriberLocally(); }).catch(saveSubscriberLocally);
+      } else {
+        saveSubscriberLocally();
       }
       subscribeEmail.value = "";
       showToast("Subscribed — welcome to the quiet list");
