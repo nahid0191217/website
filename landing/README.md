@@ -8,7 +8,7 @@ outside the Next.js app so it can be deployed anywhere static files are served.
 
 ```
 landing/
-  index.html            Landing page (hero, ANC demo, showcase, pricing, reviews…)
+  index.html            Landing page (hero, features, pricing, reviews…)
   checkout.html         Checkout flow
   admin.html            Admin panel (orders, pricing settings, subscribers)
   assets/
@@ -57,9 +57,7 @@ For a real store, point the same screens at a backend (Firebase/Supabase/API).
   glass chips, bright studio product photography.
 - **Hero** with gradient headline, 3D-tilt product shot, floating stat badges,
   social proof, and a live offer countdown.
-- **Interactive ANC demo** — canvas waveform + particles reacting to a
-  slider/chips, with live dB readout.
-- **Product showcase gallery** — 4 switchable views with captions and autoplay.
+- **Product showcase** — bright studio photography across the hero and buy sections.
 - **Dynamic pricing** — protection plan, free engraving with live case preview,
   quantity, animated totals, 0% monthly estimate, dynamic delivery date.
 - **Cart drawer** — slide-in bag with quantity steppers and a free-shipping
