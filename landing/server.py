@@ -74,7 +74,7 @@ DEFAULT_SETTINGS = {
     "hero_eyebrow": "AirPods Pro · 2nd generation",
     "hero_title_1": "Silence the world.",
     "hero_title_2": "Hear every detail.",
-    "hero_subtitle": "Up to 2× more Active Noise Cancellation. Adaptive Audio that reads the room. Personalised Spatial Audio that puts you inside it. Now with USB‑C.",
+    "hero_subtitle": "2× ANC, Adaptive Audio and Personalised Spatial Audio — now with USB‑C.",
     "hero_cta_text": "Buy from {price}",
     "hero_badge_1_value": "−48",
     "hero_badge_1_unit": "dB",
@@ -89,7 +89,7 @@ DEFAULT_SETTINGS = {
     "show_features": True,
     "features_eyebrow": "Engineering",
     "features_title": "Small. And impossibly smart.",
-    "features_subtitle": "An H2 chip, custom amplifiers and a new low‑distortion driver work together in a space smaller than your fingertip.",
+    "features_subtitle": "H2 power, smart sound and all-day battery in a tiny design.",
     "show_reviews": True,
     "reviews_eyebrow": "Loved by {count} people",
     "reviews_title": "Quietly a cult classic.",
@@ -178,20 +178,20 @@ DEFAULT_PRODUCT = {
 }
 
 DEFAULT_FEATURES = [
-    {"title": "Adaptive Audio", "description": "Blends Transparency and Noise Cancellation in real time, so you hear your surroundings when you should — and ignore them when you shouldn’t.", "tag": "H2 chip inside", "visual_type": "eq", "visual_text": "", "size": "large", "sort_order": 1, "active": 1},
-    {"title": "Active Noise Cancellation", "description": "Twice the cancellation, tuned to the unique shape of your ear.", "tag": "", "visual_type": "big", "visual_text": "2×", "size": "normal", "sort_order": 2, "active": 1},
-    {"title": "Personalised Spatial Audio", "description": "Dynamic head tracking keeps the stage fixed around you — in a cinema, on the train, anywhere.", "tag": "", "visual_type": "orbit", "visual_text": "", "size": "normal", "sort_order": 3, "active": 1},
-    {"title": "Up to 6 hours per charge", "description": "Six hours of listening. Thirty with the case. Five minutes gets you an hour.", "tag": "", "visual_type": "big", "visual_text": "6h", "size": "normal", "sort_order": 4, "active": 1},
-    {"title": "IP54 protection", "description": "Dust, sweat and water resistant. Built for rain runs and everything after.", "tag": "", "visual_type": "icon", "visual_text": "", "size": "normal", "sort_order": 5, "active": 1},
-    {"title": "Charge any way you like", "description": "One cable for everything you own. And if the case goes missing, Find My can make it play a sound.", "tag": "Charging case", "visual_type": "pills", "visual_text": "USB-C, MagSafe, Qi, Apple Watch, Find My", "size": "large", "sort_order": 6, "active": 1},
+    {"title": "Adaptive Audio", "description": "Balances quiet and awareness in real time.", "tag": "H2 chip inside", "visual_type": "eq", "visual_text": "", "size": "large", "sort_order": 1, "active": 1},
+    {"title": "Active Noise Cancellation", "description": "Up to 2× quieter, tuned to your ears.", "tag": "", "visual_type": "big", "visual_text": "2×", "size": "normal", "sort_order": 2, "active": 1},
+    {"title": "Personalised Spatial Audio", "description": "Head-tracked sound that stays centred around you.", "tag": "", "visual_type": "orbit", "visual_text": "", "size": "normal", "sort_order": 3, "active": 1},
+    {"title": "Up to 6 hours per charge", "description": "30h total with the case; 5 min adds about 1h.", "tag": "", "visual_type": "big", "visual_text": "6h", "size": "normal", "sort_order": 4, "active": 1},
+    {"title": "IP54 protection", "description": "Dust, sweat and splash resistant.", "tag": "", "visual_type": "icon", "visual_text": "", "size": "normal", "sort_order": 5, "active": 1},
+    {"title": "Charge any way you like", "description": "One case for every charger you already own.", "tag": "Charging case", "visual_type": "pills", "visual_text": "USB-C, MagSafe, Qi, Apple Watch, Find My", "size": "large", "sort_order": 6, "active": 1},
 ]
 
 DEFAULT_REVIEWS = [
-    {"author": "Mahin K.", "location": "Dhaka", "rating": 5, "body": "The noise cancellation on my commute is genuinely the difference between arriving at work wound up and arriving calm.", "date_label": "2 weeks ago", "color": "#4ad9ff", "verified": 1, "sort_order": 1, "active": 1},
-    {"author": "Sara L.", "location": "Chittagong", "rating": 5, "body": "Adaptive Audio is the feature I didn’t know I needed. It fades the traffic out but keeps the announcement at the gate.", "date_label": "1 month ago", "color": "#8b7bff", "verified": 1, "sort_order": 2, "active": 1},
-    {"author": "Arif R.", "location": "Sylhet", "rating": 4, "body": "Spatial Audio with head tracking made me re‑listen to my whole library. The case speaker has already saved me twice.", "date_label": "1 month ago", "color": "#ff9d6c", "verified": 1, "sort_order": 3, "active": 1},
-    {"author": "Nusrat T.", "location": "Dhaka", "rating": 5, "body": "Four hours in a library, no pressure, no ache. Just swapped to the small tips and forgot they were there.", "date_label": "2 months ago", "color": "#b6ff6a", "verified": 1, "sort_order": 4, "active": 1},
-    {"author": "Farhan H.", "location": "Dhaka", "rating": 5, "body": "Bought a second pair for my wife within a week. Calls are crystal clear even on a rickshaw in Mirpur traffic.", "date_label": "3 months ago", "color": "#ff6ca8", "verified": 1, "sort_order": 5, "active": 1},
+    {"author": "Mahin K.", "location": "Dhaka", "rating": 5, "body": "The ANC makes my commute feel calm from start to finish.", "date_label": "2 weeks ago", "color": "#4ad9ff", "verified": 1, "sort_order": 1, "active": 1},
+    {"author": "Sara L.", "location": "Chittagong", "rating": 5, "body": "Adaptive Audio fades traffic out but keeps announcements clear.", "date_label": "1 month ago", "color": "#8b7bff", "verified": 1, "sort_order": 2, "active": 1},
+    {"author": "Arif R.", "location": "Sylhet", "rating": 4, "body": "Spatial Audio made me re-listen to my whole library.", "date_label": "1 month ago", "color": "#ff9d6c", "verified": 1, "sort_order": 3, "active": 1},
+    {"author": "Nusrat T.", "location": "Dhaka", "rating": 5, "body": "Comfortable for hours — I forget I am wearing them.", "date_label": "2 months ago", "color": "#b6ff6a", "verified": 1, "sort_order": 4, "active": 1},
+    {"author": "Farhan H.", "location": "Dhaka", "rating": 5, "body": "Calls stay crystal clear, even in Mirpur traffic.", "date_label": "3 months ago", "color": "#ff6ca8", "verified": 1, "sort_order": 5, "active": 1},
 ]
 
 DEFAULT_PROMOS = [
